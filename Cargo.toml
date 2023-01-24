@@ -1,0 +1,7 @@
+[package]
+name = "fungus"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+kira = "0.7.1"
