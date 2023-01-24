@@ -6,7 +6,7 @@
 use kira::sound::static_sound::{StaticSoundData, StaticSoundSettings};
 use std::error::Error;
 
-mod sequencer;
+pub mod sequencer;
 
 /** bank of active samples */
 pub struct ActiveSamples {
