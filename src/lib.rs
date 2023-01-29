@@ -1,21 +1,17 @@
-/*
- * Module to handle playback (or just raw dog rodio)
- * Trigger methods to trigger sounds
- * Samples module to select / load Samples
- */
 use kira::sound::static_sound::{StaticSoundData, StaticSoundSettings};
 use std::error::Error;
 
 pub mod sequencer;
+pub mod playback;
 
-/** bank of active samples */
+/// bank of active samples
 pub struct ActiveSamples {
     // the loaded samples
     pub samples: Vec<StaticSoundData>,
 }
 
 impl ActiveSamples {
-    /** Load up the samples innit */
+    /// Load up the samples innit
     pub fn load() -> Result<ActiveSamples, Box<dyn Error>> {
         let mut samples: Vec<StaticSoundData> = vec![];
 

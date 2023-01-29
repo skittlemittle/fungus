@@ -61,11 +61,14 @@ impl Sequence for SampleSequence {
             self.tracks[track][step] = trigger;
             return Ok(());
         }
-        Err("out of bounds vector index")
+        Err("track or step index out of bounds")
     }
 
     fn get_sequence(&self) -> SampleSequence {
-        SampleSequence { tracks: self.tracks.clone(), steps: self.steps }
+        SampleSequence {
+            tracks: self.tracks.clone(),
+            steps: self.steps,
+        }
     }
 }
 
