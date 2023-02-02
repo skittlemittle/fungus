@@ -41,6 +41,12 @@ pub trait Sequence {
 
     /// returns the sequence
     fn get_sequence(&self) -> SampleSequence;
+
+    /// returns the number of steps this sequence has
+    fn steps(&self) -> usize;
+
+    /// returns the tracks in this sequence
+    fn tracks(&self) -> Vec<Track>;
 }
 
 impl Sequence for SampleSequence {
@@ -70,6 +76,14 @@ impl Sequence for SampleSequence {
             steps: self.steps,
         }
     }
+
+    fn steps(&self) -> usize {
+        self.steps
+    }
+
+    fn tracks(&self) -> Vec<Track> {
+        self.tracks.clone()
+    }
 }
 
 #[cfg(test)]
@@ -87,9 +101,8 @@ mod tests {
         assert!(ret.unwrap_err().len() != 0, "should have thrown an error");
 
         let check = s.get_sequence();
-        assert_eq!(check.tracks[0][3], true);
-        assert_eq!(check.tracks[1][7], false);
-        assert_eq!(check.steps, 8);
+        assert_eq!(check.tracks()[0][3], true);
+        assert_eq!(check.tracks()[1][7], false);
     }
 
     #[test]
@@ -106,5 +119,26 @@ mod tests {
         assert_eq!(s.get_sequence().tracks[0][2], true);
         s.clear_all();
         assert_eq!(s.get_sequence().tracks[0][2], false);
+    }
+
+    #[test]
+    fn getting() {
+        let mut s = SampleSequence::new(3, 5);
+        s.set_step(0, 2, true);
+        s.set_step(0, 4, true);
+        s.set_step(1, 0, true);
+        s.set_step(1, 4, true);
+
+        let t = s.tracks();
+        assert_eq!(t[0][2], true);
+        assert_eq!(t[0][4], true);
+        assert_eq!(t[1][0], true);
+        assert_eq!(t[1][4], true);
+
+        for track in &t[2] {
+            assert_eq!(*track, false);
+        }
+
+        assert_eq!(s.steps(), 5);
     }
 }
