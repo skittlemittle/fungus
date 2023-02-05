@@ -6,8 +6,7 @@ use kira::sound::static_sound::StaticSoundData;
 use kira::ClockSpeed;
 use std::{error::Error, sync::mpsc::Receiver};
 
-use crate::ActiveSamples;
-use crate::{sequencer::SampleSequence, sequencer::Sequence};
+use crate::{sequencer::SampleSequence, sequencer::Sequence, samples::ActiveSamples};
 
 /// Used to transmit changes on single samples
 type SamplePatch = (usize, StaticSoundData);
@@ -25,7 +24,7 @@ impl PlayBack {
     /// returns an error is samples has no samples in it
     pub fn setup(samples: ActiveSamples) -> Result<PlayBack, Box<dyn Error>> {
         let m = AudioManager::<CpalBackend>::new(AudioManagerSettings::default())?;
-        if samples.samples.len() == 0 {
+        if samples.len() == 0 {
             return Err(Box::<dyn Error>::from("Empty sample bank"));
         }
         Ok(PlayBack {
@@ -39,11 +38,11 @@ impl PlayBack {
 
 pub trait Player {
     /// the playback loop
-    /// 
+    ///
     /// sequence_rx: channel to receive sequence changes
-    /// 
+    ///
     /// sounds_rx: channel to receive changes to samples
-    /// 
+    ///
     /// returns an error if kira cant play
     fn begin_playback(
         &mut self,
@@ -59,10 +58,10 @@ impl Player for PlayBack {
         sounds_rx: Receiver<SamplePatch>,
     ) -> Result<(), Box<dyn Error>> {
         self.mute = false;
-        let num_tracks = if self.sequence.num_tracks() > self.samples.samples.len() {
+        let num_tracks = if self.sequence.num_tracks() > self.samples.len() {
             self.sequence.num_tracks()
         } else {
-            self.samples.samples.len()
+            self.samples.len()
         };
 
         let mut sequence_tracks = self.sequence.tracks();
@@ -97,8 +96,8 @@ impl Player for PlayBack {
 
             match sounds_rx.try_recv() {
                 Ok(patch) => {
-                    if patch.0 <= self.samples.samples.len() {
-                        self.samples.samples[patch.0] = patch.1;
+                    if patch.0 <= self.samples.len() {
+                        self.samples[patch.0] = patch.1;
                     }
                 }
                 Err(_) => (),
@@ -112,7 +111,8 @@ impl Player for PlayBack {
                 for track in 0..num_tracks {
                     if sequence_tracks[track][step] {
                         print!("+");
-                        self.audio_manager.play(self.samples.samples[track].clone())?;
+                        self.audio_manager
+                            .play(self.samples[track].clone())?;
                     } else {
                         print!("_");
                     }
