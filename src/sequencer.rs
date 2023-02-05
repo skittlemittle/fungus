@@ -1,6 +1,7 @@
 type Track = Vec<bool>;
 
-/// The thing what has and handles the sequence
+/// Stores information about when sounds get triggered
+#[derive(Default)]
 pub struct SampleSequence {
     tracks: Vec<Track>,
     steps: usize,
@@ -47,6 +48,8 @@ pub trait Sequence {
 
     /// returns the tracks in this sequence
     fn tracks(&self) -> Vec<Track>;
+
+    fn num_tracks(&self) -> usize;
 }
 
 impl Sequence for SampleSequence {
@@ -83,6 +86,10 @@ impl Sequence for SampleSequence {
 
     fn tracks(&self) -> Vec<Track> {
         self.tracks.clone()
+    }
+
+    fn num_tracks(&self) -> usize {
+        self.tracks.len()
     }
 }
 
