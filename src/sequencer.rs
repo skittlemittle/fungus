@@ -5,8 +5,6 @@ type Track = Vec<bool>;
 pub struct SampleSequence {
     tracks: Vec<Track>,
     steps: usize,
-    /// tempo of the sequence in beats per minute
-    tempo: u32
 }
 
 impl SampleSequence {
@@ -15,9 +13,7 @@ impl SampleSequence {
     /// num tracks: how many tracks it got
     /// 
     /// num_steps: how many steps it got
-    /// 
-    /// tempo: tempo of the sequence in BPM
-    pub fn new(num_tracks: usize, num_steps: usize, tempo: u32) -> SampleSequence {
+    pub fn new(num_tracks: usize, num_steps: usize) -> SampleSequence {
         let mut tracks: Vec<Track> = vec![];
 
         for _ in 0..num_tracks {
@@ -26,7 +22,6 @@ impl SampleSequence {
         SampleSequence {
             tracks,
             steps: num_steps,
-            tempo
         }
     }
 }
@@ -59,8 +54,6 @@ pub trait Sequence {
     fn tracks(&self) -> Vec<Track>;
 
     fn num_tracks(&self) -> usize;
-
-    fn tempo(&self) -> u32;
 }
 
 impl Sequence for SampleSequence {
@@ -88,7 +81,6 @@ impl Sequence for SampleSequence {
         SampleSequence {
             tracks: self.tracks.clone(),
             steps: self.steps,
-            tempo: self.tempo
         }
     }
 
@@ -103,10 +95,6 @@ impl Sequence for SampleSequence {
     fn num_tracks(&self) -> usize {
         self.tracks.len()
     }
-
-    fn tempo(&self) -> u32 {
-        self.tempo
-    }
 }
 
 #[allow(unused_must_use)]
@@ -116,7 +104,7 @@ mod tests {
 
     #[test]
     fn setting_steps() {
-        let mut s = SampleSequence::new(2, 8, 60);
+        let mut s = SampleSequence::new(2, 8);
         let mut ret = s.set_step(0, 3, true);
         assert_eq!(ret.unwrap(), ());
         ret = s.set_step(0, 9, true);
@@ -131,7 +119,7 @@ mod tests {
 
     #[test]
     fn clearing() {
-        let mut s = SampleSequence::new(3, 5, 180);
+        let mut s = SampleSequence::new(3, 5);
         s.set_step(0, 2, true);
         s.set_step(0, 4, true);
         s.set_step(1, 0, true);
@@ -147,7 +135,7 @@ mod tests {
 
     #[test]
     fn getting() {
-        let mut s = SampleSequence::new(3, 5, 60);
+        let mut s = SampleSequence::new(3, 5);
         s.set_step(0, 2, true);
         s.set_step(0, 4, true);
         s.set_step(1, 0, true);
@@ -164,7 +152,5 @@ mod tests {
         }
 
         assert_eq!(s.steps(), 5);
-
-        assert_eq!(s.tempo(), 60);
     }
 }
