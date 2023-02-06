@@ -62,10 +62,9 @@ impl Player for PlayBack {
         let ticks_per_step = 1;
         let metronome = self
             .audio_manager
-            .add_clock(ClockSpeed::TicksPerMinute(100.0))
-            .unwrap();
+            .add_clock(ClockSpeed::TicksPerMinute(100.0))?;
 
-        metronome.start().unwrap();
+        metronome.start()?;
 
         let mut time_last_loop = metronome.time();
         let mut ticks_elapsed: u64 = 0;
