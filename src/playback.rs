@@ -2,14 +2,10 @@
 This module manages the playback thread
 */
 use kira::manager::{backend::cpal::CpalBackend, AudioManager, AudioManagerSettings};
-use kira::sound::static_sound::StaticSoundData;
 use kira::ClockSpeed;
 use std::{error::Error, sync::mpsc::Receiver};
 
-use crate::{sequencer::SampleSequence, sequencer::Sequence, samples::ActiveSamples};
-
-/// Used to transmit changes on single samples
-type SamplePatch = (usize, StaticSoundData);
+use crate::{samples::ActiveSamples, sequencer::SampleSequence, sequencer::Sequence};
 
 pub struct PlayBack {
     audio_manager: AudioManager,
@@ -41,13 +37,10 @@ pub trait Player {
     ///
     /// sequence_rx: channel to receive sequence changes
     ///
-    /// sounds_rx: channel to receive changes to samples
-    ///
     /// returns an error if kira cant play
     fn begin_playback(
         &mut self,
         sequence_rx: Receiver<SampleSequence>,
-        sounds_rx: Receiver<SamplePatch>,
     ) -> Result<(), Box<dyn Error>>;
 }
 
@@ -55,7 +48,6 @@ impl Player for PlayBack {
     fn begin_playback(
         &mut self,
         sequence_rx: Receiver<SampleSequence>,
-        sounds_rx: Receiver<SamplePatch>,
     ) -> Result<(), Box<dyn Error>> {
         self.mute = false;
         let num_tracks = if self.sequence.num_tracks() > self.samples.len() {
@@ -94,15 +86,6 @@ impl Player for PlayBack {
                 Err(_) => (),
             };
 
-            match sounds_rx.try_recv() {
-                Ok(patch) => {
-                    if patch.0 <= self.samples.len() {
-                        self.samples[patch.0] = patch.1;
-                    }
-                }
-                Err(_) => (),
-            }
-
             let time_now = metronome.time();
             ticks_elapsed += time_now.ticks - time_last_loop.ticks;
             time_last_loop.ticks = time_now.ticks;
@@ -111,8 +94,7 @@ impl Player for PlayBack {
                 for track in 0..num_tracks {
                     if sequence_tracks[track][step] {
                         print!("+");
-                        self.audio_manager
-                            .play(self.samples[track].clone())?;
+                        self.audio_manager.play(self.samples[track].clone())?;
                     } else {
                         print!("_");
                     }
