@@ -2,7 +2,9 @@
 This module manages the playback thread
 */
 use kira::manager::{backend::cpal::CpalBackend, AudioManager, AudioManagerSettings};
+use kira::tween::Tween;
 use kira::ClockSpeed;
+use std::time::Duration;
 use std::{error::Error, sync::mpsc::Receiver};
 
 use crate::{samples::ActiveSamples, sequencer::SampleSequence, sequencer::Sequence};
@@ -62,7 +64,7 @@ impl Player for PlayBack {
         let ticks_per_step = 1;
         let metronome = self
             .audio_manager
-            .add_clock(ClockSpeed::TicksPerMinute(100.0))?;
+            .add_clock(ClockSpeed::TicksPerMinute(self.sequence.tempo() as f64))?;
 
         metronome.start()?;
 
@@ -79,6 +81,14 @@ impl Player for PlayBack {
                 Ok(seq) => {
                     self.sequence = seq;
                     sequence_tracks = self.sequence.tracks();
+                    metronome.set_speed(
+                        ClockSpeed::TicksPerMinute(self.sequence.tempo() as f64),
+                        Tween {
+                            start_time: kira::StartTime::Immediate,
+                            duration: Duration::from_micros(0),
+                            ..Default::default()
+                        },
+                    )?;
                     step = 0;
                     // TODO: if update is a change dont reset step count
                 }
