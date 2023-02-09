@@ -9,6 +9,14 @@ use std::{error::Error, sync::mpsc::Receiver};
 
 use crate::{samples::ActiveSamples, sequencer::SampleSequence, sequencer::Sequence};
 
+/// controls for playback
+pub struct Controls {
+    pub tempo: u32,
+    pub mute: bool,
+}
+
+static TEMPO_INIT: u32 = 180;
+
 pub struct PlayBack {
     audio_manager: AudioManager,
     mute: bool,
@@ -39,10 +47,13 @@ pub trait Player {
     ///
     /// sequence_rx: channel to receive sequence changes
     ///
+    /// control_rx: channel to receive control commands
+    ///
     /// returns an error if kira cant play
     fn begin_playback(
         &mut self,
         sequence_rx: Receiver<SampleSequence>,
+        control_rx: Receiver<Controls>,
     ) -> Result<(), Box<dyn Error>>;
 }
 
@@ -50,6 +61,7 @@ impl Player for PlayBack {
     fn begin_playback(
         &mut self,
         sequence_rx: Receiver<SampleSequence>,
+        control_rx: Receiver<Controls>,
     ) -> Result<(), Box<dyn Error>> {
         self.mute = false;
         let num_tracks = if self.sequence.num_tracks() > self.samples.len() {
@@ -60,18 +72,34 @@ impl Player for PlayBack {
 
         let mut sequence_tracks = self.sequence.tracks();
 
-        let mut step = 0;
-        let ticks_per_step = 1;
         let metronome = self
             .audio_manager
-            .add_clock(ClockSpeed::TicksPerMinute(self.sequence.tempo() as f64))?;
+            .add_clock(ClockSpeed::TicksPerMinute(TEMPO_INIT as f64))?;
 
         metronome.start()?;
 
+        let mut step = 0;
+        let ticks_per_step = 1;
         let mut time_last_loop = metronome.time();
         let mut ticks_elapsed: u64 = 0;
 
         loop {
+            match control_rx.try_recv() {
+                Ok(ctrl) => {
+                    metronome.set_speed(
+                        ClockSpeed::TicksPerMinute(ctrl.tempo as f64),
+                        Tween {
+                            start_time: kira::StartTime::Immediate,
+                            duration: Duration::from_micros(0),
+                            ..Default::default()
+                        },
+                    )?;
+
+                    self.mute = ctrl.mute;
+                }
+                Err(_) => (),
+            }
+
             if self.mute {
                 continue;
             }
@@ -79,18 +107,11 @@ impl Player for PlayBack {
             // check for control messages and handle them
             match sequence_rx.try_recv() {
                 Ok(seq) => {
+                    if self.sequence.num_tracks() != seq.num_tracks() {
+                        step = 0;
+                    }
                     self.sequence = seq;
                     sequence_tracks = self.sequence.tracks();
-                    metronome.set_speed(
-                        ClockSpeed::TicksPerMinute(self.sequence.tempo() as f64),
-                        Tween {
-                            start_time: kira::StartTime::Immediate,
-                            duration: Duration::from_micros(0),
-                            ..Default::default()
-                        },
-                    )?;
-                    step = 0;
-                    // TODO: if update is a change dont reset step count
                 }
                 Err(_) => (),
             };
