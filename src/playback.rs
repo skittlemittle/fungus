@@ -104,7 +104,6 @@ impl Player for PlayBack {
                 continue;
             }
 
-            // check for control messages and handle them
             match sequence_rx.try_recv() {
                 Ok(seq) => {
                     if self.sequence.num_tracks() != seq.num_tracks() {
@@ -116,6 +115,8 @@ impl Player for PlayBack {
                 Err(_) => (),
             };
 
+            /* === The actual playback logic === */
+
             let time_now = metronome.time();
             ticks_elapsed += time_now.ticks - time_last_loop.ticks;
             time_last_loop.ticks = time_now.ticks;
@@ -123,16 +124,8 @@ impl Player for PlayBack {
             if ticks_elapsed >= ticks_per_step {
                 for track in 0..num_tracks {
                     if sequence_tracks[track][step] {
-                        print!("+");
                         self.audio_manager.play(self.samples[track].clone())?;
-                    } else {
-                        print!("_");
                     }
-                }
-                println!("");
-
-                if step == self.sequence.steps() - 1 {
-                    println!("\n");
                 }
 
                 step = (step + 1) % self.sequence.steps();
