@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 kira = "0.7.1"
+pancurses = "0.17"
