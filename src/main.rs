@@ -2,18 +2,22 @@ use std::error::Error;
 use std::sync::mpsc;
 use std::thread;
 
+use fungus::test_ui::{Display, ScrContent};
 fn main() {
-    match play() {
+    let disp = Display::begin();
+
+    match play(disp) {
         Err(e) => println!("{}", e),
         Ok(()) => (),
     }
+    Display::end();
 }
 
-use fungus::playback::{PlayBack, Player, Controls};
+use fungus::playback::{Controls, PlayBack, Player};
 use fungus::samples;
 use fungus::sequencer::{SampleSequence, Sequence};
 
-fn play() -> Result<(), Box<dyn Error>> {
+fn play(display: Display) -> Result<(), Box<dyn Error>> {
     let mut seq = SampleSequence::new(3, 5);
 
     seq.set_step(0, 0, true)?;
@@ -37,18 +41,54 @@ fn play() -> Result<(), Box<dyn Error>> {
         player.begin_playback(seq_rx, control_rx).unwrap();
     });
 
+    Display::update(
+        &display,
+        ScrContent {
+            muted: false,
+            tempo: 180,
+            play: true,
+            step: 3,
+            sequence: &seq,
+        },
+    );
+
     seq_tx.send(seq.get_sequence())?;
 
     std::thread::sleep(std::time::Duration::from_secs(2));
-    control_tx.send(Controls{tempo: 130, mute: true})?;
+    control_tx.send(Controls {
+        tempo: 130,
+        mute: true,
+    })?;
+    Display::update(
+        &display,
+        ScrContent {
+            muted: true,
+            tempo: 130,
+            play: true,
+            step: 3,
+            sequence: &seq,
+        },
+    );
 
     std::thread::sleep(std::time::Duration::from_secs(4));
-    control_tx.send(Controls{tempo: 130, mute: false})?;
-
-
+    control_tx.send(Controls {
+        tempo: 130,
+        mute: false,
+    })?;
 
     seq.set_step(0, 0, false)?;
     seq_tx.send(seq.get_sequence())?;
+
+    Display::update(
+        &display,
+        ScrContent {
+            muted: false,
+            tempo: 130,
+            play: true,
+            step: 3,
+            sequence: &seq,
+        },
+    );
 
     handle.join().unwrap();
 
