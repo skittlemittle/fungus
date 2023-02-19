@@ -19,7 +19,11 @@ pub struct ScrContent<'a> {
 impl Display {
     /// starts curses, call this before doing any other ui stuff
     pub fn begin() -> Display {
-        Display { window: initscr() }
+        let window = initscr();
+        window.nodelay(true);
+        pancurses::noecho();
+
+        Display { window }
     }
     pub fn end() {
         endwin();
@@ -53,5 +57,9 @@ impl Display {
             self.window.printw(&format!("{track} \n"));
         }
         self.window.refresh();
+    }
+
+    pub fn getch(&self) -> Option<pancurses::Input> {
+        self.window.getch()
     }
 }
