@@ -9,9 +9,9 @@ pub struct SampleSequence {
 
 impl SampleSequence {
     /// new empty sequence
-    /// 
+    ///
     /// num tracks: how many tracks it got
-    /// 
+    ///
     /// num_steps: how many steps it got
     pub fn new(num_tracks: usize, num_steps: usize) -> SampleSequence {
         let mut tracks: Vec<Track> = vec![];
