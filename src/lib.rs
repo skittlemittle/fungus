@@ -19,6 +19,7 @@ struct State {
     pub tempo: u32,
     pub muted: bool,
     pub selected_track: usize,
+    pub step: usize,
     pub sequence: SampleSequence,
     pub samples: Vec<StaticSoundData>,
 }
@@ -33,24 +34,25 @@ pub fn play(display: Display) -> Result<(), Box<dyn Error>> {
         muted: false,
         tempo: 100,
         selected_track: 0,
+        step: 0,
         sequence: SampleSequence::new(samples.len(), 8),
         samples,
     };
 
     let (seq_tx, seq_rx) = mpsc::channel();
     let (control_tx, control_rx) = mpsc::channel();
+    let (step_tx, step_rx) = mpsc::channel();
 
     let mut player = PlayBack::setup(state.samples)?;
 
     let playback_handle = thread::spawn(move || {
         // FIXME: unwrap lmao
-        player.begin_playback(seq_rx, control_rx).unwrap();
+        player.begin_playback(seq_rx, control_rx, step_tx).unwrap();
     });
 
     seq_tx.send(state.sequence.get_sequence())?;
 
     loop {
-        // read inputs
         let command = match Display::getch(&display) {
             Some(Input::Character(c)) => c,
             Some(_) => '0',
@@ -74,17 +76,15 @@ pub fn play(display: Display) -> Result<(), Box<dyn Error>> {
                 should_update = true;
             }
             ' ' => {
-                let c_step = 1;
                 state
                     .sequence
-                    .set_step(state.selected_track, c_step, true)?;
+                    .set_step(state.selected_track, state.step, true)?;
                 should_update = true;
             }
             'c' => {
-                let c_step = 1;
                 state
                     .sequence
-                    .set_step(state.selected_track, c_step, false)?;
+                    .set_step(state.selected_track, state.step, false)?;
                 should_update = true;
             }
             'z' => {
@@ -92,6 +92,11 @@ pub fn play(display: Display) -> Result<(), Box<dyn Error>> {
                 should_update = true;
             }
             _ => {}
+        }
+
+        match step_rx.try_recv() {
+            Ok(s) => state.step = s,
+            Err(_) => (),
         }
 
         if !should_update {
@@ -111,13 +116,11 @@ pub fn play(display: Display) -> Result<(), Box<dyn Error>> {
                 muted: state.muted,
                 tempo: state.tempo,
                 play: true,
-                step: 1,
+                step: state.step,
                 sequence: &state.sequence,
             },
         )
     }
-
-    playback_handle.join().unwrap();
 
     Ok(())
 }

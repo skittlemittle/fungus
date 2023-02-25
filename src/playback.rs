@@ -4,6 +4,7 @@ This module manages the playback thread
 use kira::manager::{backend::cpal::CpalBackend, AudioManager, AudioManagerSettings};
 use kira::tween::Tween;
 use kira::ClockSpeed;
+use std::sync::mpsc::Sender;
 use std::time::Duration;
 use std::{error::Error, sync::mpsc::Receiver};
 
@@ -49,11 +50,14 @@ pub trait Player {
     ///
     /// control_rx: channel to receive control commands
     ///
+    /// step_tx: channel to send the current step of the sequence on
+    ///
     /// returns an error if kira cant play
     fn begin_playback(
         &mut self,
         sequence_rx: Receiver<SampleSequence>,
         control_rx: Receiver<Controls>,
+        step_tx: Sender<usize>,
     ) -> Result<(), Box<dyn Error>>;
 }
 
@@ -62,6 +66,7 @@ impl Player for PlayBack {
         &mut self,
         sequence_rx: Receiver<SampleSequence>,
         control_rx: Receiver<Controls>,
+        step_tx: Sender<usize>,
     ) -> Result<(), Box<dyn Error>> {
         self.mute = false;
         let num_tracks = if self.sequence.num_tracks() > self.samples.len() {
@@ -129,6 +134,8 @@ impl Player for PlayBack {
                 }
 
                 step = (step + 1) % self.sequence.steps();
+
+                step_tx.send(step)?;
 
                 ticks_elapsed = 0;
             }
