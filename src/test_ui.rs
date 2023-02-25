@@ -13,6 +13,7 @@ pub struct ScrContent<'a> {
     pub tempo: u32,
     pub play: bool,
     pub step: usize,
+    pub track: usize,
     pub sequence: &'a SampleSequence,
 }
 
@@ -56,6 +57,8 @@ impl Display {
         for track in Display::seq_format(content.sequence) {
             self.window.printw(&format!("{track} \n"));
         }
+        self.window
+            .mv(content.track as i32 + 2, content.step as i32);
         self.window.refresh();
     }
 

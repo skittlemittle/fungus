@@ -32,7 +32,7 @@ pub fn play(display: Display) -> Result<(), Box<dyn Error>> {
 
     let mut state = State {
         muted: false,
-        tempo: 100,
+        tempo: 180,
         selected_track: 0,
         step: 0,
         sequence: SampleSequence::new(samples.len(), 8),
@@ -59,67 +59,72 @@ pub fn play(display: Display) -> Result<(), Box<dyn Error>> {
             None => '0',
         };
 
-        let mut should_update = false;
+        let mut send_control = false;
         match command {
-            'j' => {
+            'k' => {
                 if state.selected_track >= 1 {
                     state.selected_track -= 1;
                 }
             }
-            'k' => {
+            'j' => {
                 if state.selected_track < state.sequence.num_tracks() - 1 {
                     state.selected_track += 1;
                 }
             }
             'm' => {
                 state.muted = !state.muted;
-                should_update = true;
+                send_control = true;
             }
             ' ' => {
                 state
                     .sequence
                     .set_step(state.selected_track, state.step, true)?;
-                should_update = true;
+                send_control = true;
             }
             'c' => {
                 state
                     .sequence
                     .set_step(state.selected_track, state.step, false)?;
-                should_update = true;
+                send_control = true;
             }
             'z' => {
                 state.sequence.clear_track(state.selected_track);
-                should_update = true;
+                send_control = true;
             }
             _ => {}
         }
 
+        let mut update_screen = false;
         match step_rx.try_recv() {
-            Ok(s) => state.step = s,
+            Ok(s) => {
+                state.step = s;
+                update_screen = true
+            }
             Err(_) => (),
         }
 
-        if !should_update {
-            continue;
+        if update_screen || command != '0' {
+            Display::update(
+                &display,
+                ScrContent {
+                    muted: state.muted,
+                    tempo: state.tempo,
+                    play: true,
+                    step: state.step,
+                    track: state.selected_track,
+                    sequence: &state.sequence,
+                },
+            )
         }
 
-        control_tx.send(Controls {
-            tempo: state.tempo,
-            mute: state.muted,
-        })?;
-
-        seq_tx.send(state.sequence.get_sequence())?;
-
-        Display::update(
-            &display,
-            ScrContent {
-                muted: state.muted,
+        if send_control {
+            control_tx.send(Controls {
                 tempo: state.tempo,
-                play: true,
-                step: state.step,
-                sequence: &state.sequence,
-            },
-        )
+                mute: state.muted,
+            })?;
+
+            seq_tx.send(state.sequence.get_sequence())?;
+        }
     }
 
     Ok(())
