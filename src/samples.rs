@@ -1,5 +1,5 @@
 use kira::sound::static_sound::{StaticSoundData, StaticSoundSettings};
-use std::error::Error;
+use std::{error::Error, ffi::OsStr, fs};
 
 /// bank of active samples
 pub type ActiveSamples = Vec<StaticSoundData>;
@@ -8,11 +8,18 @@ pub type ActiveSamples = Vec<StaticSoundData>;
 pub fn load() -> Result<ActiveSamples, Box<dyn Error>> {
     let mut samples: Vec<StaticSoundData> = vec![];
 
-    for i in 1..4 {
-        let sample =
-            StaticSoundData::from_file(format!("{i}.wav"), StaticSoundSettings::default())?;
-        samples.push(sample);
+    let paths = fs::read_dir("./samples")?;
+
+    for file in paths {
+        let path = match file {
+            Ok(f) => f.path(),
+            Err(_) => continue,
+        };
+
+        if !path.is_dir() && path.extension() == Some(OsStr::new("wav")) {
+            let sample = StaticSoundData::from_file(path, StaticSoundSettings::default())?;
+            samples.push(sample);
+        }
     }
     Ok(samples as ActiveSamples)
 }
-
