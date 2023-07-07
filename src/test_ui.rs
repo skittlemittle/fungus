@@ -2,34 +2,22 @@
 extern crate pancurses;
 
 use crate::sequencer::{SampleSequence, Sequence};
-use pancurses::{endwin, initscr};
+use crate::ui::{Command, UIContent, Ui};
+use pancurses::{endwin, initscr, Input};
 
 pub struct Display {
     window: pancurses::Window,
 }
 
-pub struct ScrContent<'a> {
-    pub muted: bool,
-    pub tempo: u32,
-    pub play: bool,
-    pub step: usize,
-    pub track: usize,
-    pub sequence: &'a SampleSequence,
-}
-
 impl Display {
     /// starts curses, call this before doing any other ui stuff
-    pub fn begin() -> Display {
+    pub fn new() -> Display {
         let window = initscr();
         window.nodelay(true);
         pancurses::noecho();
 
         Display { window }
     }
-    pub fn end() {
-        endwin();
-    }
-
     fn seq_format(sequence: &SampleSequence) -> Vec<String> {
         sequence
             .tracks()
@@ -42,27 +30,36 @@ impl Display {
             })
             .collect::<Vec<String>>()
     }
+}
+
+impl Ui for Display {
+    fn end(&self) {
+        endwin();
+    }
 
     /// updates the ui
-    pub fn update(&self, content: ScrContent) {
+    fn update(&self, content: UIContent) {
         self.window.clear();
         self.window.refresh();
         self.window.printw(&format!(
-            "BPM: {} \t {} \n {} \n",
+            "BPM: {} \t {} \n",
             content.tempo,
             if content.muted { "M" } else { "" },
-            if content.play { "Playing" } else { "Paused" }
         ));
 
         for track in Display::seq_format(content.sequence) {
             self.window.printw(&format!("{track} \n"));
         }
         self.window
-            .mv(content.track as i32 + 2, content.step as i32);
+            .mv(content.track as i32 + 1, content.step as i32);
         self.window.refresh();
     }
 
-    pub fn getch(&self) -> Option<pancurses::Input> {
-        self.window.getch()
+    fn get_command(&self) -> Command {
+        match self.window.getch() {
+            Some(Input::Character(c)) => c,
+            Some(_) => '0',
+            None => '0',
+        }
     }
 }

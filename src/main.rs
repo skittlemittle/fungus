@@ -1,11 +1,12 @@
 use fungus::test_ui::Display;
+use fungus::ui::Ui;
 
 fn main() {
-    let disp = Display::begin();
+    let disp = Display::new();
 
-    match fungus::play(disp) {
+    match fungus::play(&disp) {
         Err(e) => println!("{}", e),
         Ok(()) => (),
     }
-    Display::end();
+    disp.end();
 }

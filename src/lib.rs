@@ -2,17 +2,16 @@ use std::error::Error;
 use std::sync::mpsc;
 use std::thread;
 
-use pancurses::Input;
-
 pub mod playback;
 pub mod samples;
 pub mod sequencer;
 pub mod test_ui;
+pub mod ui;
 
 use kira::sound::static_sound::StaticSoundData;
 use playback::{Controls, PlayBack, Player};
 use sequencer::{SampleSequence, Sequence};
-use test_ui::{Display, ScrContent};
+use ui::{UIContent, Ui};
 
 /// app? state :trollface:
 struct State {
@@ -26,8 +25,8 @@ struct State {
 
 /// The program control loop
 ///
-/// display: handle to curses display
-pub fn play(display: Display) -> Result<(), Box<dyn Error>> {
+/// display: handle to UI
+pub fn play(display: &impl Ui) -> Result<(), Box<dyn Error>> {
     let samples = samples::load()?;
 
     let mut state = State {
@@ -45,7 +44,7 @@ pub fn play(display: Display) -> Result<(), Box<dyn Error>> {
 
     let mut player = PlayBack::setup(state.samples)?;
 
-    let playback_handle = thread::spawn(move || {
+    let _playback_handle = thread::spawn(move || {
         // FIXME: unwrap lmao
         player.begin_playback(seq_rx, control_rx, step_tx).unwrap();
     });
@@ -53,11 +52,7 @@ pub fn play(display: Display) -> Result<(), Box<dyn Error>> {
     seq_tx.send(state.sequence.get_sequence())?;
 
     loop {
-        let command = match Display::getch(&display) {
-            Some(Input::Character(c)) => c,
-            Some(_) => '0',
-            None => '0',
-        };
+        let command = display.get_command();
 
         let mut send_control = false;
         match command {
@@ -104,17 +99,13 @@ pub fn play(display: Display) -> Result<(), Box<dyn Error>> {
         }
 
         if update_screen || command != '0' {
-            Display::update(
-                &display,
-                ScrContent {
-                    muted: state.muted,
-                    tempo: state.tempo,
-                    play: true,
-                    step: state.step,
-                    track: state.selected_track,
-                    sequence: &state.sequence,
-                },
-            )
+            display.update(UIContent {
+                muted: state.muted,
+                tempo: state.tempo,
+                step: state.step,
+                track: state.selected_track,
+                sequence: &state.sequence,
+            })
         }
 
         if send_control {
