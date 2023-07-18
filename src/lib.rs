@@ -86,6 +86,14 @@ pub fn play(display: &impl Ui) -> Result<(), Box<dyn Error>> {
                 state.sequence.clear_track(state.selected_track);
                 send_control = true;
             }
+            '+' => {
+                state.tempo += 1;
+                send_control = true;
+            }
+            '-' => {
+                state.tempo -= 1;
+                send_control = true;
+            }
             _ => {}
         }
 

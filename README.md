@@ -4,6 +4,8 @@
 
 - `j, k` to down / up a track
 - `m` to toggle mute
+- '+' bpm++
+- '-' bpm--
 
 _These apply to the current track_
 
