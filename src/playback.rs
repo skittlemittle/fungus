@@ -133,8 +133,8 @@ impl Player for PlayBack {
                     }
                 }
 
-                step_tx.send(step)?;
                 step = (step + 1) % self.sequence.steps();
+                step_tx.send(step)?;
 
                 ticks_elapsed = 0;
             }
