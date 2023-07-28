@@ -1,4 +1,5 @@
 /// curses testing ui
+#[cfg(not(pi))]
 extern crate pancurses;
 
 use crate::sequencer::{SampleSequence, Sequence};

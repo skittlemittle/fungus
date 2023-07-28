@@ -5,4 +5,14 @@ edition = "2021"
 
 [dependencies]
 kira = "0.7.1"
+
+# raspberrypicels dont get curses
+[target.'cfg(target_arch = "x86_64")'.dependencies]
 pancurses = "0.17"
+
+# doesnt work dont use this
+#[target.arm-unknown-linux-gnueabihf.dependencies]
+#rppal="0.14.1"
+
+[target.armv7-unknown-linux-gnueabihf.dependencies]
+rppal="0.14.1"

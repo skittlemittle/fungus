@@ -1,0 +1,11 @@
+[build]
+
+# zero / 1, DOESNT WORK
+#[target.arm-unknown-linux-gnueabihf]
+#linker="arm-linux-gnueabihf-gcc"
+#rustflags=['--cfg=`pi`']
+
+# 2/3/4
+[target.armv7-unknown-linux-gnueabihf]
+linker="arm-none-linux-gnueabihf-gcc"
+rustflags=['--cfg=`pi`']
