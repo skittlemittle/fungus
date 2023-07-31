@@ -2,13 +2,16 @@
 This module manages the playback thread
 */
 use kira::manager::{backend::cpal::CpalBackend, AudioManager, AudioManagerSettings};
+use kira::sound::static_sound::StaticSoundSettings;
+use kira::track::{TrackBuilder, TrackHandle};
 use kira::tween::Tween;
-use kira::ClockSpeed;
+use kira::{ClockSpeed, Volume};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 use std::{error::Error, sync::mpsc::Receiver};
 
-use crate::{samples::ActiveSamples, sequencer::SampleSequence, sequencer::Sequence};
+use crate::samples::ActiveSamples;
+use crate::sequencer::{AccentLevel, SampleSequence, Sequence};
 
 /// controls for playback
 pub struct Controls {
@@ -20,6 +23,8 @@ static TEMPO_INIT: u32 = 180;
 
 pub struct PlayBack {
     audio_manager: AudioManager,
+    soft_hits: TrackHandle,
+    accented_hits: TrackHandle,
     mute: bool,
     sequence: SampleSequence,
     samples: ActiveSamples,
@@ -28,14 +33,19 @@ pub struct PlayBack {
 impl PlayBack {
     /// set up the playback loop
     ///
-    /// returns an error is samples has no samples in it
+    /// returns an error if the samples are empty, or if it cant spawn an "audiomanager"
     pub fn setup(samples: ActiveSamples) -> Result<PlayBack, Box<dyn Error>> {
-        let m = AudioManager::<CpalBackend>::new(AudioManagerSettings::default())?;
+        let mut m = AudioManager::<CpalBackend>::new(AudioManagerSettings::default())?;
         if samples.len() == 0 {
             return Err(Box::<dyn Error>::from("Empty sample bank"));
         }
+        // soft and loud mixer tracks for accent levels
+        let soft_hits = m.add_sub_track(TrackBuilder::new().volume(Volume::Decibels(-6.0)))?;
+        let accented_hits = m.add_sub_track(TrackBuilder::new().volume(Volume::Decibels(6.0)))?;
         Ok(PlayBack {
             audio_manager: m,
+            soft_hits,
+            accented_hits,
             mute: true,
             sequence: Default::default(),
             samples,
@@ -128,8 +138,18 @@ impl Player for PlayBack {
 
             if ticks_elapsed >= ticks_per_step {
                 for track in 0..num_tracks {
-                    if sequence_tracks[track][step] {
-                        self.audio_manager.play(self.samples[track].clone())?;
+                    let mixer_track = match sequence_tracks[track][step] {
+                        AccentLevel::Silent => self.soft_hits.id(),
+                        AccentLevel::Loud => self.accented_hits.id(),
+                        _ => self.audio_manager.main_track().id(),
+                    };
+
+                    if sequence_tracks[track][step] != AccentLevel::Silent {
+                        self.audio_manager.play(
+                            self.samples[track]
+                                .clone()
+                                .with_settings(StaticSoundSettings::new().track(mixer_track)),
+                        )?;
                     }
                 }
 

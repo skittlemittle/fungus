@@ -1,7 +1,7 @@
 /// curses testing ui
 extern crate pancurses;
 
-use crate::sequencer::{SampleSequence, Sequence};
+use crate::sequencer::{AccentLevel, SampleSequence, Sequence};
 use crate::ui::{Command, UIContent, Ui};
 use pancurses::{endwin, initscr, Input};
 
@@ -25,7 +25,13 @@ impl Display {
             .map(|track| {
                 track
                     .iter()
-                    .map(|&step| if step { "+" } else { "_" })
+                    .map(|&step| {
+                        if step != AccentLevel::Silent {
+                            "+"
+                        } else {
+                            "_"
+                        }
+                    })
                     .collect()
             })
             .collect::<Vec<String>>()

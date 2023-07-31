@@ -10,7 +10,7 @@ pub mod ui;
 
 use kira::sound::static_sound::StaticSoundData;
 use playback::{Controls, PlayBack, Player};
-use sequencer::{SampleSequence, Sequence};
+use sequencer::{AccentLevel, SampleSequence, Sequence};
 use ui::{UIContent, Ui};
 
 /// app? state :trollface:
@@ -70,16 +70,30 @@ pub fn play(display: &impl Ui) -> Result<(), Box<dyn Error>> {
                 state.muted = !state.muted;
                 send_control = true;
             }
+            // hits
             ' ' => {
                 state
                     .sequence
-                    .set_step(state.selected_track, state.step, true)?;
+                    .set_step(state.selected_track, state.step, AccentLevel::Regular)?;
                 send_control = true;
             }
+            'l' => {
+                state
+                    .sequence
+                    .set_step(state.selected_track, state.step, AccentLevel::Loud)?;
+                send_control = true;
+            }
+            's' => {
+                state
+                    .sequence
+                    .set_step(state.selected_track, state.step, AccentLevel::Soft)?;
+                send_control = true;
+            }
+            // clearing
             'c' => {
                 state
                     .sequence
-                    .set_step(state.selected_track, state.step, false)?;
+                    .set_step(state.selected_track, state.step, AccentLevel::Silent)?;
                 send_control = true;
             }
             'z' => {
