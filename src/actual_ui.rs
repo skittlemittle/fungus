@@ -2,79 +2,44 @@
 /// button, encoders, and such.
 use crate::ui::{Command, UIContent, Ui};
 
-use rppal::gpio::{Gpio, InputPin};
+use rppal::gpio::Gpio;
 use std::error::Error;
 use std::sync::mpsc;
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::Receiver;
 use std::thread;
-use std::time::Duration;
 
-struct Encoder {
-    a: InputPin,
-    b: InputPin,
-    pub value: i32,
-    last_encoded: u8,
-}
+pub mod rotary;
 
-impl Encoder {
-    /// takes BCM pin numbers for the encoders pins and makes a new encoder instance.
-    pub fn new(pina: u8, pinb: u8, gpio: Gpio) -> Result<Encoder, Box<dyn Error>> {
-        let a = gpio.get(pina)?.into_input_pullup();
-        let b = gpio.get(pinb)?.into_input_pullup();
-
-        Ok(Encoder {
-            a,
-            b,
-            value: 0,
-            last_encoded: 0,
-        })
-    }
-}
-
-trait Rotary {
-    fn update(&mut self) -> ();
-}
-
-impl Rotary for Encoder {
-    fn update(&mut self) {
-        let msb = self.a.is_high() as u8;
-        let lsb = self.b.is_high() as u8;
-
-        let encoded = (msb << 1) | lsb;
-        let sum = (self.last_encoded << 2) | encoded;
-
-        if sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011 {
-            self.value += 1;
-        }
-        if sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000 {
-            self.value -= 1;
-        }
-
-        self.last_encoded = encoded;
-    }
-}
+use rotary::Encoder;
 
 pub struct HardUi {
-    tempo_knob: Receiver<i32>,
+    /// the the rotary encoders
+    encoders_rx: Receiver<(usize, i32)>,
 }
+
+/*
+Okay look, its not pretty or elegant or smart but i dont care and it does not matter
+all the encoders are dumped into a list and shipped off, NO READING THEM HERE.
+the polling function sends you a (index, val) tuple so what your soy ass is gonna do
+is remember this:
+
+0: track_select
+1: tempo
+*/
 
 impl HardUi {
     pub fn new() -> Result<HardUi, Box<dyn Error>> {
-        let gpio = Gpio::new()?;
-        let mut t_enc = Encoder::new(17, 18, gpio)?;
-
-        // make loop thread here
-        // pass it the encoder
-        // keep its channel recv here and we read from it ova here
-        let (polled_inputs_tx, polled_inputs_rx) = mpsc::channel::<i32>();
+        let (encoders_tx, encoders_rx) = mpsc::channel::<(usize, i32)>();
 
         let _handle = thread::spawn(move || {
-            poll(polled_inputs_tx, t_enc);
+            //TODO: unwrap
+            let gpio = Gpio::new().unwrap();
+            let track_select = Encoder::new(17, 18, &gpio).expect("pins already in use");
+            let tempo = Encoder::new(22, 23, &gpio).expect("pins already in use");
+            rotary::poll(encoders_tx, vec![track_select, tempo]);
         });
 
-        Ok(HardUi {
-            tempo_knob: polled_inputs_rx,
-        })
+        Ok(HardUi { encoders_rx })
     }
 }
 
@@ -82,27 +47,27 @@ impl Ui for HardUi {
     fn update(&self, content: UIContent) {}
 
     fn get_command(&self) -> Command {
-        match self.tempo_knob.try_recv() {
-            Ok(m) => println!("{}", m),
-            Err(_) => (),
-        };
-        '0'
+        match self.encoders_rx.try_recv() {
+            Ok(m) => match m.0 {
+                0 => {
+                    if m.1 > 0 {
+                        'j'
+                    } else {
+                        'k'
+                    }
+                }
+                1 => {
+                    if m.1 > 0 {
+                        '+'
+                    } else {
+                        '-'
+                    }
+                }
+                _ => '0',
+            },
+            Err(_) => '0',
+        }
     }
 
     fn end(&self) {}
-}
-
-/// button and rotary polling
-fn poll(tx: Sender<i32>, mut encoder: Encoder) {
-    let mut last: i32 = 0;
-    loop {
-        encoder.update();
-        let now = encoder.value;
-        if last != now {
-            tx.send(now);
-        }
-        last = now;
-
-        thread::sleep(Duration::from_millis(1));
-    }
 }
