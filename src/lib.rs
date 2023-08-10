@@ -5,8 +5,13 @@ use std::thread;
 pub mod playback;
 pub mod samples;
 pub mod sequencer;
-pub mod test_ui;
 pub mod ui;
+
+#[cfg(not(pi))]
+pub mod test_ui;
+
+#[cfg(pi)]
+pub mod actual_ui;
 
 use kira::sound::static_sound::StaticSoundData;
 use playback::{Controls, PlayBack, Player};
@@ -26,7 +31,7 @@ struct State {
 /// The program control loop
 ///
 /// display: handle to UI
-pub fn play(display: &impl Ui) -> Result<(), Box<dyn Error>> {
+pub fn play(display: &impl Ui, steps: usize) -> Result<(), Box<dyn Error>> {
     let samples = samples::load()?;
 
     let mut state = State {
@@ -34,7 +39,7 @@ pub fn play(display: &impl Ui) -> Result<(), Box<dyn Error>> {
         tempo: 180,
         selected_track: 0,
         step: 0,
-        sequence: SampleSequence::new(samples.len(), 8),
+        sequence: SampleSequence::new(samples.len(), steps),
         samples,
     };
 
@@ -96,7 +101,7 @@ pub fn play(display: &impl Ui) -> Result<(), Box<dyn Error>> {
                     .set_step(state.selected_track, state.step, AccentLevel::Silent)?;
                 send_control = true;
             }
-            'z' => {
+            'C' => {
                 state.sequence.clear_track(state.selected_track);
                 send_control = true;
             }
