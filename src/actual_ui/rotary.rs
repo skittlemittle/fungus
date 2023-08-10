@@ -1,8 +1,5 @@
 use rppal::gpio::{Gpio, InputPin};
 use std::error::Error;
-use std::sync::mpsc::Sender;
-use std::thread;
-use std::time::Duration;
 
 /// the data tied to a rotary encoder
 pub struct Encoder {
@@ -20,7 +17,6 @@ impl Encoder {
         Ok(Encoder {
             a,
             b,
-            value: 0,
             last_encoded: 0,
         })
     }
@@ -28,6 +24,9 @@ impl Encoder {
 
 /// rotary encoder reading logic
 pub trait Rotary {
+    /// check the encoder and return back the direction of movement
+    /// returns: 0 for nothing, 1 for clockwise, -1 for anticlockwise
+    /// poll this regularly, like ~900Hz
     fn update(&mut self) -> i32;
 }
 
@@ -49,20 +48,5 @@ impl Rotary for Encoder {
 
         self.last_encoded = encoded;
         direction
-    }
-}
-
-/// tx: sends a tuple: (index_of_encoder, value)
-/// encoders: vec of encoders
-pub fn poll(tx: Sender<(usize, i32)>, mut encoders: Vec<Encoder>) {
-    loop {
-        for i in 0..encoders.len() {
-            let now = encoders[i].update();
-            if now != 0 {
-                tx.send((i, now));
-            }
-        }
-        // TODO: adaptive wait? so it always takes ~1ms to check again?
-        thread::sleep(Duration::from_millis(1));
     }
 }
