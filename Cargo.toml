@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 kira = "0.7.1"
+spin_sleep = "1.1.1"
 
 # raspberrypicels dont get curses
 [target.'cfg(target_arch = "x86_64")'.dependencies]

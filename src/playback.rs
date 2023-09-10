@@ -4,11 +4,12 @@ This module manages the playback thread
 use kira::manager::{backend::cpal::CpalBackend, AudioManager, AudioManagerSettings};
 use kira::sound::static_sound::StaticSoundSettings;
 use kira::track::{TrackBuilder, TrackHandle};
-use kira::tween::Tween;
 use kira::{ClockSpeed, Volume};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 use std::{error::Error, sync::mpsc::Receiver};
+
+use spin_sleep;
 
 use crate::samples::ActiveSamples;
 use crate::sequencer::{AccentLevel, SampleSequence, Sequence};
@@ -19,7 +20,7 @@ pub struct Controls {
     pub mute: bool,
 }
 
-static TEMPO_INIT: u32 = 180;
+static TEMPO_INIT: u64 = 180;
 
 pub struct PlayBack {
     audio_manager: AudioManager,
@@ -94,22 +95,12 @@ impl Player for PlayBack {
         metronome.start()?;
 
         let mut step = 0;
-        let ticks_per_step = 1;
-        let mut time_last_loop = metronome.time();
-        let mut ticks_elapsed: u64 = 0;
+        let mut bpm: u64 = TEMPO_INIT;
 
         loop {
             match control_rx.try_recv() {
                 Ok(ctrl) => {
-                    metronome.set_speed(
-                        ClockSpeed::TicksPerMinute(ctrl.tempo as f64),
-                        Tween {
-                            start_time: kira::StartTime::Immediate,
-                            duration: Duration::from_micros(0),
-                            ..Default::default()
-                        },
-                    )?;
-
+                    bpm = ctrl.tempo as u64;
                     self.mute = ctrl.mute;
                 }
                 Err(_) => (),
@@ -132,32 +123,26 @@ impl Player for PlayBack {
 
             /* === The actual playback logic === */
 
-            let time_now = metronome.time();
-            ticks_elapsed += time_now.ticks - time_last_loop.ticks;
-            time_last_loop.ticks = time_now.ticks;
+            for track in 0..num_tracks {
+                let mixer_track = match sequence_tracks[track][step] {
+                    AccentLevel::Silent => self.soft_hits.id(),
+                    AccentLevel::Loud => self.accented_hits.id(),
+                    _ => self.audio_manager.main_track().id(),
+                };
 
-            if ticks_elapsed >= ticks_per_step {
-                for track in 0..num_tracks {
-                    let mixer_track = match sequence_tracks[track][step] {
-                        AccentLevel::Silent => self.soft_hits.id(),
-                        AccentLevel::Loud => self.accented_hits.id(),
-                        _ => self.audio_manager.main_track().id(),
-                    };
-
-                    if sequence_tracks[track][step] != AccentLevel::Silent {
-                        self.audio_manager.play(
-                            self.samples[track]
-                                .clone()
-                                .with_settings(StaticSoundSettings::new().track(mixer_track)),
-                        )?;
-                    }
+                if sequence_tracks[track][step] != AccentLevel::Silent {
+                    self.audio_manager.play(
+                        self.samples[track]
+                            .clone()
+                            .with_settings(StaticSoundSettings::new().track(mixer_track)),
+                    )?;
                 }
-
-                step = (step + 1) % self.sequence.steps();
-                step_tx.send(step)?;
-
-                ticks_elapsed = 0;
             }
+
+            step = (step + 1) % self.sequence.steps();
+            step_tx.send(step)?;
+
+            spin_sleep::sleep(Duration::from_millis(60_000 / bpm));
         }
     }
 }

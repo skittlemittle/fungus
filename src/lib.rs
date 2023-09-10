@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::sync::mpsc;
 use std::thread;
+use std::time::Duration;
 
 pub mod playback;
 pub mod samples;
@@ -57,6 +58,7 @@ pub fn play(display: &impl Ui, steps: usize) -> Result<(), Box<dyn Error>> {
     seq_tx.send(state.sequence.get_sequence())?;
 
     loop {
+        thread::sleep(Duration::from_millis(10));
         let command = display.get_command();
 
         let mut send_control = false;
