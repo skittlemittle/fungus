@@ -46,13 +46,12 @@ pub fn play(display: &impl Ui, steps: usize) -> Result<(), Box<dyn Error>> {
 
     let (seq_tx, seq_rx) = mpsc::channel();
     let (control_tx, control_rx) = mpsc::channel();
-    let (step_tx, step_rx) = mpsc::channel();
 
     let mut player = PlayBack::setup(state.samples)?;
 
     let _playback_handle = thread::spawn(move || {
         // FIXME: unwrap lmao
-        player.begin_playback(seq_rx, control_rx, step_tx).unwrap();
+        player.begin_playback(seq_rx, control_rx).unwrap();
     });
 
     seq_tx.send(state.sequence.get_sequence())?;
@@ -73,6 +72,17 @@ pub fn play(display: &impl Ui, steps: usize) -> Result<(), Box<dyn Error>> {
                     state.selected_track += 1;
                 }
             }
+            'l' => {
+                if state.step < state.sequence.steps() {
+                    state.step += 1;
+                }
+            }
+            'h' => {
+                if state.step > 0 {
+                    state.step -= 1;
+                }
+            }
+
             'm' => {
                 state.muted = !state.muted;
                 send_control = true;
@@ -84,7 +94,7 @@ pub fn play(display: &impl Ui, steps: usize) -> Result<(), Box<dyn Error>> {
                     .set_step(state.selected_track, state.step, AccentLevel::Regular)?;
                 send_control = true;
             }
-            'l' => {
+            'd' => {
                 state
                     .sequence
                     .set_step(state.selected_track, state.step, AccentLevel::Loud)?;
@@ -118,16 +128,7 @@ pub fn play(display: &impl Ui, steps: usize) -> Result<(), Box<dyn Error>> {
             _ => {}
         }
 
-        let mut update_screen = false;
-        match step_rx.try_recv() {
-            Ok(s) => {
-                state.step = s;
-                update_screen = true
-            }
-            Err(_) => (),
-        }
-
-        if update_screen || command != '0' {
+        if command != '0' {
             display.update(UIContent {
                 muted: state.muted,
                 tempo: state.tempo,
