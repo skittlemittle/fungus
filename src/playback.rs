@@ -4,8 +4,7 @@ This module manages the playback thread
 use kira::manager::{backend::cpal::CpalBackend, AudioManager, AudioManagerSettings};
 use kira::sound::static_sound::StaticSoundSettings;
 use kira::track::{TrackBuilder, TrackHandle};
-use kira::{ClockSpeed, Volume};
-use std::sync::mpsc::Sender;
+use kira::Volume;
 use std::time::Duration;
 use std::{error::Error, sync::mpsc::Receiver};
 
@@ -61,14 +60,11 @@ pub trait Player {
     ///
     /// control_rx: channel to receive control commands
     ///
-    /// step_tx: channel to send the current step of the sequence on
-    ///
     /// returns an error if kira cant play
     fn begin_playback(
         &mut self,
         sequence_rx: Receiver<SampleSequence>,
         control_rx: Receiver<Controls>,
-        step_tx: Sender<usize>,
     ) -> Result<(), Box<dyn Error>>;
 }
 
@@ -77,7 +73,6 @@ impl Player for PlayBack {
         &mut self,
         sequence_rx: Receiver<SampleSequence>,
         control_rx: Receiver<Controls>,
-        step_tx: Sender<usize>,
     ) -> Result<(), Box<dyn Error>> {
         self.mute = false;
         let num_tracks = if self.sequence.num_tracks() > self.samples.len() {
@@ -87,17 +82,11 @@ impl Player for PlayBack {
         };
 
         let mut sequence_tracks = self.sequence.tracks();
-
-        let metronome = self
-            .audio_manager
-            .add_clock(ClockSpeed::TicksPerMinute(TEMPO_INIT as f64))?;
-
-        metronome.start()?;
-
         let mut step = 0;
         let mut bpm: u64 = TEMPO_INIT;
 
         loop {
+            spin_sleep::sleep(Duration::from_millis(60_000 / bpm));
             match control_rx.try_recv() {
                 Ok(ctrl) => {
                     bpm = ctrl.tempo as u64;
@@ -140,9 +129,6 @@ impl Player for PlayBack {
             }
 
             step = (step + 1) % self.sequence.steps();
-            step_tx.send(step)?;
-
-            spin_sleep::sleep(Duration::from_millis(60_000 / bpm));
         }
     }
 }
