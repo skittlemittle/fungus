@@ -32,7 +32,7 @@ struct State {
 /// The program control loop
 ///
 /// display: handle to UI
-pub fn play(display: &impl Ui, steps: usize) -> Result<(), Box<dyn Error>> {
+pub fn play(display: &impl Ui, steps: usize, divisions: u32) -> Result<(), Box<dyn Error>> {
     let samples = samples::load()?;
 
     let mut state = State {
@@ -51,7 +51,9 @@ pub fn play(display: &impl Ui, steps: usize) -> Result<(), Box<dyn Error>> {
 
     let _playback_handle = thread::spawn(move || {
         // FIXME: unwrap lmao
-        player.begin_playback(seq_rx, control_rx).unwrap();
+        player
+            .begin_playback(seq_rx, control_rx, divisions)
+            .unwrap();
     });
 
     seq_tx.send(state.sequence.get_sequence())?;
@@ -134,6 +136,7 @@ pub fn play(display: &impl Ui, steps: usize) -> Result<(), Box<dyn Error>> {
                 tempo: state.tempo,
                 step: state.step,
                 track: state.selected_track,
+                divisions,
                 sequence: &state.sequence,
             })
         }

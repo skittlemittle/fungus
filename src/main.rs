@@ -20,13 +20,17 @@ fn main() {
         Some(a) => a.parse::<usize>().unwrap(),
         None => 0,
     };
+    let divisions = match args.next() {
+        Some(a) => a.parse::<u32>().unwrap(),
+        None => 1,
+    };
 
-    if steps <= 0 {
-        println!("gotta have at least 1 step");
+    if steps <= 0 || divisions <= 0 {
+        println!("gotta have at least 1 step. divisions must be >= 1");
         process::exit(1);
     }
 
-    match fungus::play(&disp, steps) {
+    match fungus::play(&disp, steps, divisions) {
         Err(e) => println!("{}", e),
         Ok(()) => (),
     }

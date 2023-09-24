@@ -60,11 +60,14 @@ pub trait Player {
     ///
     /// control_rx: channel to receive control commands
     ///
+    /// division: how many steps to a beat, the usual music sense
+    ///
     /// returns an error if kira cant play
     fn begin_playback(
         &mut self,
         sequence_rx: Receiver<SampleSequence>,
         control_rx: Receiver<Controls>,
+        divisions: u32,
     ) -> Result<(), Box<dyn Error>>;
 }
 
@@ -73,6 +76,7 @@ impl Player for PlayBack {
         &mut self,
         sequence_rx: Receiver<SampleSequence>,
         control_rx: Receiver<Controls>,
+        division: u32,
     ) -> Result<(), Box<dyn Error>> {
         self.mute = false;
         let num_tracks = if self.sequence.num_tracks() > self.samples.len() {
@@ -86,7 +90,7 @@ impl Player for PlayBack {
         let mut bpm: u64 = TEMPO_INIT;
 
         loop {
-            spin_sleep::sleep(Duration::from_millis(60_000 / bpm));
+            spin_sleep::sleep(Duration::from_millis(60_000 / (bpm * division as u64)));
             match control_rx.try_recv() {
                 Ok(ctrl) => {
                     bpm = ctrl.tempo as u64;

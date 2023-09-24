@@ -7,6 +7,7 @@ pub struct UIContent<'a> {
     pub tempo: u32,
     pub step: usize,
     pub track: usize,
+    pub divisions: u32,
     pub sequence: &'a SampleSequence,
 }
 
